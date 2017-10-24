@@ -15,6 +15,9 @@ class CurrentUserRender extends React.Component {
 }
 
 export const withCurrentUser = graphql(CURRENT_USER_QUERY, {
+  options: {
+    ssr: false,
+  },
   props: ({ data }) => ({
     currentUser: data.currentUser,
     loading: data.loading,
