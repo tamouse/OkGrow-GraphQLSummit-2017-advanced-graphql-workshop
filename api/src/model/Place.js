@@ -31,7 +31,8 @@ export default class Place {
       updatedAt: Date.now(),
     };
 
-    const { insertedId } = await this.collection.insertOne(docToInsert);
+    const {insertedId} = await this.collection.insertOne(docToInsert);
+    this.pubsub.publish('placeCreated', await this.findOneById(insertedId))
 
     return insertedId;
   }
