@@ -4,6 +4,7 @@ import { ApolloProvider } from 'react-apollo';
 import { ApolloClient } from 'apollo-client';
 import {ApolloLink} from 'apollo-link';
 import { HttpLink } from 'apollo-link-http';
+import WsLink from 'apollo-link-ws';
 import { InMemoryCache } from 'apollo-cache-inmemory';
 import App from './components/App';
 
@@ -12,7 +13,6 @@ const uri = '/graphql';
 const httpLink = new HttpLink({ uri });
 const authLink = new ApolloLink((operation, forward) => {
   const token = localStorage.getItem('AUTH_TOKEN');
-  console.log(token)
   operation.setContext(()=>({
     headers: {
       authorization: token ? `JWT ${token}` : null,
@@ -21,7 +21,25 @@ const authLink = new ApolloLink((operation, forward) => {
   return(forward(operation));
 })
 
-const link = ApolloLink.from([authLink, httpLink])
+const rightLink = ApolloLink.from([authLink, httpLink])
+
+const hasSubscriptionOperation = operation =>
+  operation.query.definitions.reduce(
+    (result, definition) =>
+      result ||
+      definition.operation === 'subscription',
+    false
+  );
+
+const leftLink = new WsLink({
+  uri: 'ws://localhost:8081/graphql'
+})
+
+const link = ApolloLink.split(
+  hasSubscriptionOperation,
+  leftLink,
+  rightLink
+)
 
 const cache = new InMemoryCache();
 
