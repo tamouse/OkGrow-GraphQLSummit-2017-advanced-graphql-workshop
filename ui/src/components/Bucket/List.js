@@ -1,58 +1,68 @@
 import React from 'react';
-import styled, { keyframes } from 'styled-components';
-import { graphql, compose } from 'react-apollo';
+import styled, {keyframes} from 'styled-components';
+import {graphql, compose} from 'react-apollo';
 import Input from './Input';
 import Place from './Place';
 import Button from '../shared/Button';
-import { withLoadingSpinner } from '../shared/LoadingSpinner';
+import {withLoadingSpinner} from '../shared/LoadingSpinner';
 
 import LIST_QUERY from './List.query.graphql';
 import LIST_MUTATION from './List.mutation.graphql';
 import LIST_SUBSCRIPTION_UPDATE from './List.subscription.update.graphql';
+import LIST_SUBSCRIPTION_CREATE from './List.subscription.create.graphql';
 
 class List extends React.Component {
   componentWillMount() {
-    // note: avoid the App to error when the client is not set for subscriptions
-    if (typeof LIST_SUBSCRIPTION_UPDATE !== 'undefined') {
-      this.props.subscribeToMore({
-        document: LIST_SUBSCRIPTION_UPDATE,
-        updateQuery: (prev, { subscriptionData }) => {
-          const { placeUpdated } = subscriptionData;
+    this.props.subscribeToMore({
+      document: LIST_SUBSCRIPTION_UPDATE,
+      updateQuery: (prev, {subscriptionData}) => {
+        const {placeUpdated} = subscriptionData;
 
-          if (!placeUpdated) {
-            return prev;
-          }
+        if (!placeUpdated) {
+          return prev;
+        }
 
-          const index = prev.places.findIndex(
-            place => place.id === placeUpdated.id
-          );
+        const index = prev.places.findIndex(
+          place => place.id === placeUpdated.id
+        );
 
-          return {
-            ...prev,
-            places: [
-              ...prev.places.slice(0, index),
-              placeUpdated,
-              ...prev.places.slice(index + 1),
-            ],
-          };
-        },
-      });
-    }
+        return {
+          ...prev,
+          places: [
+            ...prev.places.slice(0, index),
+            placeUpdated,
+            ...prev.places.slice(index + 1),
+          ],
+        };
+      },
+    });
+    this.props.subscribeToMore({
+      documents: LIST_SUBSCRIPTION_CREATE,
+      updateQuery: (prev, {subscriptionData}) => {
+        const {placeCreated} = subscriptionData
+        if (!placeCreated) return prev
+
+        return {
+          ...prev,
+          places: [...prev.places, placeCreated]
+        }
+      }
+    })
   }
 
   render() {
-    const { toggleVisited, places } = this.props;
+    const {toggleVisited, places} = this.props;
 
     return (
       <Container>
-        <Input />
+        <Input/>
         {!places.length && <NoPlaces>No places in your bucket list!</NoPlaces>}
 
         {places.length > 0 && (
           <ItemList>
             {places.map(place => (
               <Item key={place.id}>
-                <Place place={place} toggleVisited={toggleVisited} />
+                <Place place={place} toggleVisited={toggleVisited}/>
                 {place.location && (
                   <Button
                     small
@@ -109,7 +119,7 @@ const Item = styled.div`
 `;
 
 const withData = graphql(LIST_QUERY, {
-  props: ({ data }) => ({
+  props: ({data}) => ({
     places: data.places || [],
     loading: data.loading,
     error: data.error,
@@ -118,10 +128,10 @@ const withData = graphql(LIST_QUERY, {
 });
 
 const withUpdatePlaceMutation = graphql(LIST_MUTATION, {
-  props: ({ ownProps, mutate }) => ({
+  props: ({ownProps, mutate}) => ({
     toggleVisited: async place => {
       await mutate({
-        variables: { input: { id: place.id, visited: !place.visited } },
+        variables: {input: {id: place.id, visited: !place.visited}},
         optimisticResponse: {
           __typename: 'Mutation',
           updatePlace: {
